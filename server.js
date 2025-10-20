@@ -21,7 +21,7 @@ const allowedOrigins = (process.env.ALLOWED_ORIGINS
 // Socket.IO CORS config (reuse same origins)
 const io = socketio(server, {
   cors: {
-    origin: allowedOrigins,
+    origin: "*",
     methods: ["GET", "POST"],
     credentials: true
   }
