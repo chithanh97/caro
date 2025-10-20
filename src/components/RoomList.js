@@ -11,6 +11,7 @@ function RoomList({ user, onJoin, currentRoomId, onLeaveRoom }) {
 
   // Lấy danh sách phòng từ API backend
   useEffect(() => {
+    console.log(API_URL);
     fetch(API_URL + "/api/rooms")
       .then(res => res.json())
       .then(data => setRooms(data.rooms || []))
