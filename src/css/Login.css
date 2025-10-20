@@ -1,0 +1,88 @@
+/* Styles for the simple Google login button / small login card */
+
+/* Layout wrapper (centered) */
+.login-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+/* Mini card to hold the button */
+.login-card-mini {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 18px;
+  box-shadow: 0 10px 24px rgba(2,6,23,0.06);
+  border: 1px solid rgba(15,23,42,0.04);
+  min-width: 280px;
+  text-align: center;
+}
+
+/* Title */
+.login-card-title {
+  margin: 0 0 12px 0;
+  font-size: 18px;
+  color: #111827;
+  font-weight: 700;
+}
+
+/* Google button */
+.google-login-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(0,0,0,0.08);
+  background: linear-gradient(90deg, #ffffff 0%, #fafafa 100%);
+  cursor: pointer;
+  font-weight: 700;
+  color: #111;
+  transition: box-shadow 160ms ease, transform 120ms ease, opacity 120ms ease;
+  box-shadow: 0 6px 18px rgba(2,6,23,0.06);
+}
+
+/* Small Google glyph on the left (simple text glyph to avoid external assets) */
+.google-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: linear-gradient(45deg, #ff4b4b 0%, #ffcd2e 50%, #35a853 100%);
+  color: white;
+  font-weight: 800;
+  font-size: 14px;
+  box-shadow: 0 4px 10px rgba(2,6,23,0.08);
+}
+
+/* Text */
+.google-text { flex: 1; text-align: center; }
+
+/* Hover / active */
+.google-login-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(2,6,23,0.09);
+}
+.google-login-btn:active {
+  transform: translateY(0);
+}
+
+/* Disabled state */
+.google-login-btn[disabled] {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .login-card-mini { min-width: 220px; padding: 14px; }
+  .google-text { font-size: 14px; }
+  .google-icon { width: 24px; height: 24px; font-size: 12px; }
+}

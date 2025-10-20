@@ -1,0 +1,18 @@
+.roomlist-root{
+    min-height: 50vh;
+    background: #fff;
+    display: flex;
+    flex-direction: column;
+    justify-content: top;
+    align-items: center;
+    padding: 30px 15px;
+    border-radius: 15px;
+}
+.action-room-button{
+    padding: 10px 15px;
+    border-radius: 5px;
+    border: 0;
+    background: blue;
+    color: #fff;
+    cursor: pointer;
+}
