@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import { io } from "socket.io-client";
 import "../css/GameBoard.css";
-const socketUrl = "http://localhost:4000";
+import { API_URL } from "../config";
+const socketUrl = API_URL;
 
 function GameBoard({ roomId, user, onLeaveRoom }) {
   const [messages, setMessages] = useState([]);
@@ -138,7 +139,7 @@ function GameBoard({ roomId, user, onLeaveRoom }) {
   // Xử lý rời phòng
   const handleLeaveRoom = async () => {
     try {
-      await fetch("https://hacnguyet.com:4000/api/leave-room", {
+      await fetch(API_URL + "/api/leave-room", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ roomId, user }),
