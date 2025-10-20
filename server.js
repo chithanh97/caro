@@ -1,19 +1,19 @@
-// server.js
 const express = require('express');
 const http = require('http');
 const socketio = require('socket.io');
 const cors = require('cors');
-
 const app = express();
 const server = http.createServer(app);
+app.use(express.json());
 
-// Configure allowed origins via env or fallback list
+const rooms = {};
 const DEFAULT_ORIGINS = [
   'http://localhost:3000',       // dev
   'http://127.0.0.1:3000',
   'https://hacnguyet.com',       // production domain
   'https://www.hacnguyet.com'
 ];
+
 const allowedOrigins = (process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map(s => s.trim()).filter(Boolean)
   : DEFAULT_ORIGINS);
@@ -27,8 +27,6 @@ const io = socketio(server, {
   }
 });
 
-// Express CORS middleware
-app.use(express.json());
 app.use(cors({
   origin: function(origin, callback) {
     // allow requests with no origin (like curl, server-to-server)
@@ -44,12 +42,6 @@ app.use(cors({
   credentials: true
 }));
 
-// Enable preflight for all routes
-app.options('*', cors());
-
-// ----- Game logic (unchanged, copied from your original) -----
-const rooms = {};
-
 function getNextRoomNumber() {
   for (let i = 1; i <= 100; i++) {
     if (!rooms[i]) return i;
@@ -57,16 +49,18 @@ function getNextRoomNumber() {
   return null;
 }
 
+// Hàm kiểm tra thắng 5 liên tiếp không bị chặn 2 đầu (Caro Việt Nam)
 function checkWin(board, x, y, symbol) {
   const directions = [
-    { dx: 1, dy: 0 },
-    { dx: 0, dy: 1 },
-    { dx: 1, dy: 1 },
-    { dx: 1, dy: -1 },
+    { dx: 1, dy: 0 },   // ngang
+    { dx: 0, dy: 1 },   // dọc
+    { dx: 1, dy: 1 },   // chéo xuống phải
+    { dx: 1, dy: -1 },  // chéo lên phải
   ];
   for (const {dx, dy} of directions) {
     let count = 1;
     let blockedStart = false, blockedEnd = false;
+    // Một phía
     let i = 1;
     while (true) {
       const val = board[x + dx * i]?.[y + dy * i];
@@ -78,6 +72,7 @@ function checkWin(board, x, y, symbol) {
       }
       i++;
     }
+    // Phía ngược lại
     i = 1;
     while (true) {
       const val = board[x - dx * i]?.[y - dy * i];
@@ -94,15 +89,17 @@ function checkWin(board, x, y, symbol) {
   return false;
 }
 
-// APIs
+// API lấy danh sách phòng (CHỈ TRẢ VỀ THUỘC TÍNH JSON ĐƯỢC)
 app.get('/api/rooms', (req, res) => {
   const list = Object.entries(rooms).map(([roomId, room]) => ({
     roomId: Number(roomId),
     players: room.players,
+    // KHÔNG trả về board, timeout, turn, turnStartTime
   }));
   res.json({ rooms: list });
 });
 
+// API tạo phòng mới
 app.post('/api/create-room', (req, res) => {
   const nextNumber = getNextRoomNumber();
   if (!nextNumber) return res.status(400).json({ error: "Đã đủ 100 phòng!" });
@@ -117,6 +114,7 @@ app.post('/api/create-room', (req, res) => {
   res.json({ roomId: nextNumber });
 });
 
+// API vào phòng
 app.post('/api/join-room', (req, res) => {
   const roomId = Number(req.body.roomId);
   const user = req.body.user;
@@ -129,14 +127,17 @@ app.post('/api/join-room', (req, res) => {
     rooms[roomId].turn = rooms[roomId].players[0].uid;
     rooms[roomId].turnStartTime = Date.now();
   }
+  // CHỈ TRẢ VỀ THUỘC TÍNH JSON ĐƯỢC
   res.json({
     room: {
       roomId,
       players: rooms[roomId].players,
+      // KHÔNG trả về board, timeout, turn, turnStartTime
     }
   });
 });
 
+// API rời phòng
 app.post('/api/leave-room', (req, res) => {
   const { roomId, user } = req.body;
   const id = Number(roomId);
@@ -151,6 +152,7 @@ app.post('/api/leave-room', (req, res) => {
       room.turn = room.players[0].uid;
       room.turnStartTime = Date.now();
     }
+    // Nếu còn 1 người, chuyển trạng thái về chưa sẵn sàng và reset trạng thái phòng
     if (room.players.length === 1) {
       room.players[0].ready = false;
       room.turn = null;
@@ -162,7 +164,7 @@ app.post('/api/leave-room', (req, res) => {
   res.json({ success: true });
 });
 
-// Turn timeout
+// Xử thua khi hết giờ
 function handleLoseByTimeout(roomId, loserUid) {
   const room = rooms[roomId];
   if (!room) return;
@@ -172,8 +174,10 @@ function handleLoseByTimeout(roomId, loserUid) {
   io.to(roomId).emit('lose', { uid: loserUid, reason: 'timeout' });
 }
 
+// Bắt đầu đếm thời gian cho lượt chơi
 function startTurnTimer(roomId, turnUid) {
   const room = rooms[roomId];
+  console.log('ok');
   if (!room) return;
   clearTimeout(room.timeout);
   room.turnStartTime = Date.now();
@@ -183,7 +187,7 @@ function startTurnTimer(roomId, turnUid) {
   io.to(roomId).emit('turn', { uid: turnUid, startTime: room.turnStartTime });
 }
 
-// Socket handlers
+// Socket.io realtime
 io.on('connection', socket => {
   socket._user = null;
   socket._roomId = null;
@@ -199,6 +203,7 @@ io.on('connection', socket => {
     io.to(roomId).emit('players', room.players);
     io.to(roomId).emit('board', room.board);
     io.to(roomId).emit('turn', { uid: room.turn, startTime: room.turnStartTime });
+    // if (room.turn) startTurnTimer(id, room.turn);
   });
 
   socket.on('getPlayers', ({ roomId }) => {
@@ -213,6 +218,7 @@ io.on('connection', socket => {
     const room = rooms[id];
     if (!room) return;
     const player = room.players.find(p => p.uid === uid);
+    console.log(room.players);
     if (player) player.ready = true;
     io.to(roomId).emit('ready', { displayName: player.displayName });
     io.to(roomId).emit('players', room.players);
@@ -224,16 +230,6 @@ io.on('connection', socket => {
       room.turn = room.players[0].uid;
       startTurnTimer(id, room.turn);
     }
-  });
-
-  socket.on('noneReady', ({ roomId, uid }) => {
-    const id = Number(roomId);
-    const room = rooms[id];
-    if (!room) return;
-    const player = room.players.find(p => p.uid === uid);
-    if (player) player.ready = false;
-    io.to(roomId).emit('noneReady', { displayName: player.displayName });
-    io.to(roomId).emit('players', room.players);
   });
 
   socket.on('move', ({ roomId, move }) => {
@@ -280,21 +276,30 @@ io.on('connection', socket => {
     }
   });
 
+  // Khi socket disconnect: XÓA user khỏi phòng nếu còn
   socket.on('disconnect', () => {
     const user = socket._user;
     const roomId = socket._roomId;
     if (!user || !roomId) return;
     const room = rooms[roomId];
     if (!room) return;
+    // Xóa user khỏi room.players
     room.players = room.players.filter(p => p.uid !== user.uid);
     io.to(roomId).emit('playerLeft', { uid: user.uid, displayName: user.displayName });
+    // Nếu còn một người trong phòng
     if (room.players.length === 1) {
       io.to(roomId).emit('lose', { uid: user.uid, reason: 'left' });
+
+      // Chuyển trạng thái của người còn lại về chưa sẵn sàng
       room.players[0].ready = false;
+
+      // Reset lượt chơi, trạng thái, thời gian
       room.turn = null;
       room.turnStartTime = null;
       room.status = "waiting";
     }
+
+    // Nếu phòng trống thì xóa phòng
     if (room.players.length === 0) {
       clearTimeout(room.timeout);
       delete rooms[roomId];
@@ -304,6 +309,4 @@ io.on('connection', socket => {
   });
 });
 
-server.listen(process.env.PORT || 4000, '0.0.0.0', () => {
-  console.log(`Server running on port ${process.env.PORT || 4000}`);
-});
+server.listen(4000, () => console.log('Server running on port 4000'));
